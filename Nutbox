@@ -1,0 +1,121 @@
+//made by Joran Osinga
+//voor de tienerschool
+//samen met Panda en stedsed
+//PM me on discord jojoosinga#3855
+
+
+
+#include <LiquidCrystal.h>
+
+LiquidCrystal lcd(7,6,5,4,9,2);
+const int tempPin = 1; // .Output van TMP36
+int fan = 11;                   // Fan pin
+int sensor = A0;
+int redPin= 3;                  // Rood Lampje pin
+int greenPin= 12;               // Groen lampje pin
+int bluePin= 13;                // Blauw lampje pin
+int pin8 = 8;
+int temp;
+int tempMin = 0;                // Temp om de vantilator te starten
+int tempMax = 80;               // 100% super max tempratuur
+int sensorValue = 0;
+int fanSpeed;
+int fanLCD;
+
+
+
+
+void setup() {
+  pinMode(fan, OUTPUT);
+  pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
+  pinMode(bluePin, OUTPUT);
+  pinMode(tempPin, INPUT);
+  lcd.begin(16,2);
+  Serial.begin(9600);
+  pinMode(pin8, OUTPUT);
+}
+
+void loop() {
+  gascode();
+  ventilatorcode();
+}
+
+
+
+void gascode() {
+  // hallt data van sensor
+  sensorValue = analogRead(sensor);
+  // Print de data van de sensor
+
+  // is ie hoger dan 500 ppm(particles per milion)
+  if (sensorValue > 500) {
+    // zet de led aan en triggert imsg
+    digitalWrite(pin8, HIGH);
+  }
+  else {
+    // minder dan 500 ppm zet de led uit
+    digitalWrite(pin8, LOW);
+  }
+
+}
+void ventilatorcode() {
+    float voltage, temp;
+  voltage =  getVoltage(tempPin);                         // voltage van tmp36
+   temp = (voltage - 0.5) * 100.0;                        // naar celsius
+
+   if(temp < tempMin) {                                   // is de temp lager dan de ventilator
+       fanSpeed = 0;                                      // ventilator draait niet
+       digitalWrite(fan, LOW);
+   }
+   if((temp >= tempMin) && (temp <= tempMax)) {           // is de temp hoger dan de min temp
+       fanSpeed = map(temp, tempMin, tempMax, 32, 255);   // echte snelheid van de ventilator
+       fanLCD = map(temp, tempMin, tempMax, 0, 100);      // snelheid op de lcd
+       analogWrite(fan, fanSpeed);                        // de ventilator echt laten draaien
+   }
+
+   if(temp <= 10) {                                       // is de tempratuur hoger dan 10C
+     digitalWrite(bluePin, HIGH);                         // zet de led aan
+   } else {                                               // anders zet hem uit
+
+     digitalWrite(bluePin, LOW);
+   }
+  if(temp > 10 && temp <= 30) {                           // is do temp tussen 10C en 30C
+     digitalWrite(greenPin, HIGH);                        // zet de led aan
+   } else {                                               // anders zet hem uit
+     digitalWrite(greenPin, LOW);
+   }
+  if(temp > 30) {                                         // is de temp hoger 30C
+     digitalWrite(redPin, HIGH);                          // zet de led aan
+   } else {                                               // anders zet hem uit
+     digitalWrite(redPin, LOW);
+   }
+  Serial.print("voltage: ");
+  Serial.print(voltage);                                  // serial print voltage
+  Serial.print("  FANS: ");
+  Serial.print(fanLCD);                                   // serial print ventilator snelheid in %%%
+  Serial.print("  deg C: ");
+  Serial.print(temp);                                     // serial print graden van de sensor in celcius
+  Serial.print("  deg F: ");
+  Serial.println(temp* (9.0/5.0) + 32.0);
+  Serial.print("  Gas hoeveelheid:  ");
+  Serial.println(sensorValue, DEC);     // serial print grade van de sensor in farenheid
+
+   lcd.print("TEMP:");
+   lcd.print(temp);                                       // graden C op het display
+   lcd.print("C");
+   lcd.setCursor(0,1);                                    // Curser Time
+   lcd.print("FANS:");
+   lcd.print(fanLCD);                                     // snelheid ventilator op display
+   lcd.print("% ");
+   lcd.print("GAS:");
+   lcd.print(sensorValue);
+   delay(2000);                                           // update elke 2 seconden
+   lcd.clear();
+}
+
+
+float getVoltage(int tempPin) {                               // tempratuur naar celsius later in de code wordt het farenheid op line 68 en 63
+  temp = analogRead(tempPin);
+  return temp * 0.0048828125;
+}
